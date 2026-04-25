@@ -545,6 +545,29 @@
     </div>
   </div>
 
+  <!-- Pix Transparent Checkout Modal -->
+  <div class="modal-overlay" id="pix-modal">
+    <div class="modal-card" style="text-align: center;">
+      <h3>Pagamento via Pix</h3>
+      <p style="margin-bottom: 15px;">Escaneie o QR Code abaixo ou copie o código Pix para pagar.</p>
+      
+      <div style="background: #f1f2f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <img id="pix-qrcode" src="" alt="QR Code Pix" style="max-width: 200px; width: 100%; display: none; margin: 0 auto;">
+        <div id="pix-loading" style="padding: 20px;">Gerando QR Code...</div>
+      </div>
+      
+      <p style="font-size: 14px; margin-bottom: 5px;">Pix Copia e Cola:</p>
+      <input type="text" id="pix-copia-cola" readonly style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
+      
+      <div class="modal-btns" style="flex-direction: column; gap: 10px;">
+        <button class="sub-btn" id="copy-pix-btn" style="width: 100%; display: flex; justify-content: center;">
+          <span>COPIAR CÓDIGO PIX</span>
+        </button>
+        <button class="modal-btn-secondary" id="close-pix-modal" style="width: 100%;">FECHAR</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.addEventListener('load', () => {
       setTimeout(() => {
@@ -575,6 +598,12 @@
     // Modal logic
     const modal = document.getElementById('sub-modal');
     const closeModal = document.getElementById('close-modal');
+    
+    // Pix Modal logic
+    const pixModal = document.getElementById('pix-modal');
+    const closePixModal = document.getElementById('close-pix-modal');
+    const copyPixBtn = document.getElementById('copy-pix-btn');
+    const pixCopiaCola = document.getElementById('pix-copia-cola');
 
     function openSubModal() {
       modal.style.display = 'flex';
@@ -586,6 +615,22 @@
 
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.style.display = 'none';
+    });
+
+    closePixModal.addEventListener('click', () => {
+      pixModal.style.display = 'none';
+    });
+
+    pixModal.addEventListener('click', (e) => {
+      if (e.target === pixModal) pixModal.style.display = 'none';
+    });
+
+    copyPixBtn.addEventListener('click', () => {
+      pixCopiaCola.select();
+      document.execCommand('copy');
+      const originalText = copyPixBtn.innerHTML;
+      copyPixBtn.innerHTML = '<span>COPIADO! ✅</span>';
+      setTimeout(() => { copyPixBtn.innerHTML = originalText; }, 2000);
     });
 
     // Payment Logic (Gateway OmegaPay)
@@ -616,14 +661,36 @@
 
         const paymentData = await response.json();
         
-        // Verifica se a API retornou um link de pagamento
-        // Ajuste "link_de_pagamento" ou "pix_url" conforme a documentação real do OmegaPay
-        if (paymentData.link_de_pagamento) {
-          window.location.href = paymentData.link_de_pagamento;
-        } else if (paymentData.pix_url) {
-          window.location.href = paymentData.pix_url;
+        // Verifica se a API retornou os dados do Pix (Copia e cola / QR Code)
+        // Você pode ajustar os nomes 'qrcode' e 'pix_copia_cola' conforme o que o OmegaPay retornar
+        const pixPayload = paymentData.pix_copia_cola || paymentData.payload || paymentData.pix_link || paymentData.link_de_pagamento;
+        const qrcodeImage = paymentData.qrcode || paymentData.qrcode_base64 || paymentData.qr_code;
+
+        if (pixPayload || qrcodeImage) {
+          // Fechar modal de assinatura e abrir o de Pix
+          modal.style.display = 'none';
+          pixModal.style.display = 'flex';
+          
+          if (pixPayload) {
+            pixCopiaCola.value = pixPayload;
+          }
+          
+          const qrImg = document.getElementById('pix-qrcode');
+          const qrLoading = document.getElementById('pix-loading');
+          
+          if (qrcodeImage) {
+            qrImg.src = qrcodeImage.startsWith('http') ? qrcodeImage : `data:image/png;base64,${qrcodeImage.replace('data:image/png;base64,', '')}`;
+            qrImg.style.display = 'block';
+            qrLoading.style.display = 'none';
+          } else {
+            qrImg.style.display = 'none';
+            qrLoading.innerHTML = 'Pix gerado com sucesso!<br>Copie o código abaixo.';
+          }
+        } else if (paymentData.redirectUrl || paymentData.url) {
+          // Fallback caso a API retorne um link externo
+          window.location.href = paymentData.redirectUrl || paymentData.url;
         } else {
-          alert('Pagamento gerado, mas sem link de redirecionamento.');
+          alert('Pagamento gerado, mas dados do Pix não encontrados na resposta.');
           console.log('Resposta da API:', paymentData);
         }
 
