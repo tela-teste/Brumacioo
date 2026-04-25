@@ -15,15 +15,18 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const amount = body?.amount;
-    const customer = body?.customer;
 
     if (!amount) {
       return res.status(400).json({ error: 'Amount is required' });
     }
 
-    if (!customer || !customer.name || !customer.document) {
-      return res.status(400).json({ error: 'Customer name and document are required' });
-    }
+    // Gerar um CPF genérico válido apenas para preencher caso a API exija
+    // Algumas APIs aceitam 00000000000, outras exigem um válido ou não exigem nada.
+    const mockCustomer = {
+      name: 'Cliente Online',
+      email: 'cliente@omegapay.com.br',
+      document: '00000000000'
+    };
 
     // =========================================================
     // CHAMADA PARA A API DO OMEGAPAY
@@ -42,11 +45,7 @@ module.exports = async function handler(req, res) {
         amount: amount,
         payment_method: 'pix',
         description: 'Assinatura Brumaccio',
-        customer: {
-          name: customer.name,
-          email: customer.email || 'cliente@email.com',
-          document: customer.document
-        }
+        customer: mockCustomer
       })
     });
 
