@@ -654,7 +654,9 @@
         });
 
         if (!response.ok) {
-          throw new Error('Falha ao comunicar com o servidor');
+          const errData = await response.json().catch(() => null);
+          const errMsg = errData ? JSON.stringify(errData) : 'Erro desconhecido do servidor';
+          throw new Error(errMsg);
         }
 
         const paymentData = await response.json();
@@ -686,13 +688,12 @@
         } else if (paymentData.redirectUrl || paymentData.url) {
           window.location.href = paymentData.redirectUrl || paymentData.url;
         } else {
-          alert('Pagamento gerado, mas dados do Pix não encontrados na resposta.');
-          console.log('Resposta da API:', paymentData);
+          alert('Resposta da API: ' + JSON.stringify(paymentData));
         }
 
       } catch (error) {
         console.error(error);
-        alert('Ocorreu um erro ao processar o pagamento. Por favor, tente novamente.');
+        alert('ERRO: ' + error.message);
       } finally {
         if (btn) {
           btn.style.opacity = '1';
