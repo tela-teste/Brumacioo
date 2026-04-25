@@ -661,10 +661,10 @@
 
         const paymentData = await response.json();
         
-        // Verifica se a API retornou os dados do Pix (Copia e cola / QR Code)
-        // Você pode ajustar os nomes 'qrcode' e 'pix_copia_cola' conforme o que o OmegaPay retornar
-        const pixPayload = paymentData.pix_copia_cola || paymentData.payload || paymentData.pix_link || paymentData.link_de_pagamento;
-        const qrcodeImage = paymentData.qrcode || paymentData.qrcode_base64 || paymentData.qr_code;
+        // Verifica se a API retornou os dados do Pix
+        // Mapeando exatamente as chaves do retorno da OmegaPay
+        const pixPayload = (paymentData.pix && paymentData.pix.code) || paymentData.pix_copia_cola || paymentData.payload || paymentData.pix_link || paymentData.link_de_pagamento;
+        const qrcodeImage = (paymentData.pix && paymentData.pix.base64) || paymentData.qrcode || paymentData.qrcode_base64 || paymentData.qr_code;
 
         if (pixPayload || qrcodeImage) {
           modal.style.display = 'none';
