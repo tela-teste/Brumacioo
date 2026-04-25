@@ -32,7 +32,8 @@ module.exports = async function handler(req, res) {
     const mockClient = {
       name: 'Cliente Vip',
       email: 'cliente@omegapay.com.br',
-      document: '42398517031' // CPF válido matematicamente para não ser rejeitado
+      document: '42398517031', // CPF válido matematicamente para não ser rejeitado
+      phone: '11999999999' // Telefone obrigatório detectado no erro Zod
     };
 
     const paymentRes = await fetch('https://app.omegapayments.com.br/api/v1/gateway/pix/receive', {
