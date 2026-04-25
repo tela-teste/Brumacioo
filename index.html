@@ -545,6 +545,36 @@
     </div>
   </div>
 
+  <!-- Checkout Form Modal -->
+  <div class="modal-overlay" id="checkout-modal">
+    <div class="modal-card">
+      <h3 style="text-align: center; margin-bottom: 15px;">Finalizar Assinatura</h3>
+      <p style="text-align: center; margin-bottom: 20px; font-size: 14px; color: #666;">Preencha seus dados para gerar o Pix</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; font-weight: bold; color: #333;">Nome Completo</label>
+          <input type="text" id="checkout-name" placeholder="Ex: João da Silva" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+        </div>
+        <div>
+          <label style="font-size: 12px; font-weight: bold; color: #333;">E-mail</label>
+          <input type="email" id="checkout-email" placeholder="Ex: joao@email.com" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+        </div>
+        <div>
+          <label style="font-size: 12px; font-weight: bold; color: #333;">CPF</label>
+          <input type="text" id="checkout-cpf" placeholder="000.000.000-00" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;" maxlength="14">
+        </div>
+      </div>
+      
+      <div class="modal-btns" style="flex-direction: column; gap: 10px;">
+        <button class="sub-btn" id="generate-pix-btn" style="width: 100%; display: flex; justify-content: center;">
+          <span>GERAR PIX</span>
+        </button>
+        <button class="modal-btn-secondary" id="close-checkout-modal" style="width: 100%;">VOLTAR</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Pix Transparent Checkout Modal -->
   <div class="modal-overlay" id="pix-modal">
     <div class="modal-card" style="text-align: center;">
@@ -599,6 +629,12 @@
     const modal = document.getElementById('sub-modal');
     const closeModal = document.getElementById('close-modal');
     
+    // Checkout Modal logic
+    const checkoutModal = document.getElementById('checkout-modal');
+    const closeCheckoutModal = document.getElementById('close-checkout-modal');
+    const generatePixBtn = document.getElementById('generate-pix-btn');
+    let currentAmountToPay = 0;
+
     // Pix Modal logic
     const pixModal = document.getElementById('pix-modal');
     const closePixModal = document.getElementById('close-pix-modal');
@@ -615,6 +651,14 @@
 
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.style.display = 'none';
+    });
+
+    closeCheckoutModal.addEventListener('click', () => {
+      checkoutModal.style.display = 'none';
+    });
+
+    checkoutModal.addEventListener('click', (e) => {
+      if (e.target === checkoutModal) checkoutModal.style.display = 'none';
     });
 
     closePixModal.addEventListener('click', () => {
@@ -634,25 +678,37 @@
     });
 
     // Payment Logic (Gateway OmegaPay)
-    async function handlePayment(amount) {
-      const btn = event?.currentTarget;
-      const originalContent = btn ? btn.innerHTML : '';
+    function handlePayment(amount) {
+      currentAmountToPay = amount;
+      modal.style.display = 'none';
+      checkoutModal.style.display = 'flex';
+    }
 
+    // Generate Pix Logic
+    generatePixBtn.addEventListener('click', async () => {
+      const name = document.getElementById('checkout-name').value;
+      const email = document.getElementById('checkout-email').value;
+      const cpf = document.getElementById('checkout-cpf').value.replace(/\D/g, '');
+
+      if (!name || !email || !cpf) {
+        alert('Por favor, preencha todos os campos.');
+        return;
+      }
+
+      const originalContent = generatePixBtn.innerHTML;
+      
       try {
-        if (btn) {
-          btn.style.opacity = '0.7';
-          btn.style.pointerEvents = 'none';
-          btn.innerHTML = '<span>PROCESSANDO...</span><span class="spinner"></span>';
-        }
+        generatePixBtn.style.opacity = '0.7';
+        generatePixBtn.style.pointerEvents = 'none';
+        generatePixBtn.innerHTML = '<span>GERANDO...</span><span class="spinner"></span>';
 
-        // =========================================================
-        // A chamada agora é feita para o seu backend seguro
-        // onde as chaves estão protegidas
-        // =========================================================
         const response = await fetch('/api/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: amount })
+          body: JSON.stringify({ 
+            amount: currentAmountToPay,
+            customer: { name, email, document: cpf }
+          })
         });
 
         if (!response.ok) {
@@ -667,8 +723,7 @@
         const qrcodeImage = paymentData.qrcode || paymentData.qrcode_base64 || paymentData.qr_code;
 
         if (pixPayload || qrcodeImage) {
-          // Fechar modal de assinatura e abrir o de Pix
-          modal.style.display = 'none';
+          checkoutModal.style.display = 'none';
           pixModal.style.display = 'flex';
           
           if (pixPayload) {
@@ -687,7 +742,6 @@
             qrLoading.innerHTML = 'Pix gerado com sucesso!<br>Copie o código abaixo.';
           }
         } else if (paymentData.redirectUrl || paymentData.url) {
-          // Fallback caso a API retorne um link externo
           window.location.href = paymentData.redirectUrl || paymentData.url;
         } else {
           alert('Pagamento gerado, mas dados do Pix não encontrados na resposta.');
@@ -698,13 +752,11 @@
         console.error(error);
         alert('Ocorreu um erro ao processar o pagamento. Por favor, tente novamente.');
       } finally {
-        if (btn) {
-          btn.style.opacity = '1';
-          btn.style.pointerEvents = 'all';
-          btn.innerHTML = originalContent;
-        }
+        generatePixBtn.style.opacity = '1';
+        generatePixBtn.style.pointerEvents = 'all';
+        generatePixBtn.innerHTML = originalContent;
       }
-    }
+    });
 
     // Attach to all locked content
     document.addEventListener('click', (e) => {

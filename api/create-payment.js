@@ -15,9 +15,14 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const amount = body?.amount;
+    const customer = body?.customer;
 
     if (!amount) {
       return res.status(400).json({ error: 'Amount is required' });
+    }
+
+    if (!customer || !customer.name || !customer.document) {
+      return res.status(400).json({ error: 'Customer name and document are required' });
     }
 
     // =========================================================
@@ -36,7 +41,12 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         amount: amount,
         payment_method: 'pix',
-        description: 'Assinatura Brumaccio'
+        description: 'Assinatura Brumaccio',
+        customer: {
+          name: customer.name,
+          email: customer.email || 'cliente@email.com',
+          document: customer.document
+        }
       })
     });
 
