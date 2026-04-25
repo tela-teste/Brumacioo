@@ -14,38 +14,29 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const amount = body?.amount;
+    const amountRaw = body?.amount;
 
-    if (!amount) {
+    if (!amountRaw) {
       return res.status(400).json({ error: 'Amount is required' });
     }
 
-    // Gerar um CPF genérico válido apenas para preencher caso a API exija
-    // Algumas APIs aceitam 00000000000, outras exigem um válido ou não exigem nada.
-    const mockCustomer = {
-      name: 'Cliente Online',
-      email: 'cliente@omegapay.com.br',
-      document: '00000000000'
-    };
+    // O valor na documentação é pedido "em reais". O frontend envia ex: 1990.
+    // Convertendo para 19.90
+    const amountInReais = Number((amountRaw / 100).toFixed(2));
 
-    // =========================================================
-    // CHAMADA PARA A API DO OMEGAPAY
-    // Obs: Adicionei "/payments" no final da URL que você enviou, pois a maioria 
-    // das APIs exige um caminho específico. Caso a documentação deles diga 
-    // algo como "/transaction" ou "/pix", basta alterar abaixo.
-    // =========================================================
-    const paymentRes = await fetch('https://app.omegapayments.com.br/api/v1/payments', {
+    // O "identifier" é obrigatório e deve ser único
+    const uniqueIdentifier = 'BRUMACCIO_' + Date.now().toString() + '_' + Math.floor(Math.random() * 1000);
+
+    const paymentRes = await fetch('https://app.omegapayments.com.br/api/v1/gateway/pix/receive', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Autenticação Basic com base64 do clientId:clientSecret
-        'Authorization': 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
+        'x-public-key': CLIENT_ID,
+        'x-secret-key': CLIENT_SECRET
       },
       body: JSON.stringify({
-        amount: amount,
-        payment_method: 'pix',
-        description: 'Assinatura Brumaccio',
-        customer: mockCustomer
+        identifier: uniqueIdentifier,
+        amount: amountInReais
       })
     });
 
