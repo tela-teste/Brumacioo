@@ -7,60 +7,36 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const CLIENT_ID = process.env.LIVEPIX_CLIENT_ID || 'bab59bda-5a11-40d7-a3a0-8d62aeadbd7c';
-  const CLIENT_SECRET = process.env.LIVEPIX_CLIENT_SECRET || 'repaOnu2ffG5xAOkQNb3CP0ryz63c84siE/GR/4bmkvGUVj1tMOLPpYwqnKJtMWZaH45Ye1EydJ5MtlKJ4qgfKFA1q5BRzzmD/FHpsQ0lXxEh6PyvUPnpCoY9UAxXixVVDJZIdJFfWiig1lyjkpeya51D0X2u/7cSxAQobERl7w';
+  // Credenciais do OmegaPay
+  // O ideal é colocar essas chaves nas variáveis de ambiente da Vercel (Environment Variables)
+  const CLIENT_ID = process.env.OMEGAPAY_CLIENT_ID || 'yagododigital_mc6hvcok12a4jk9k';
+  const CLIENT_SECRET = process.env.OMEGAPAY_CLIENT_SECRET || 'kxng049rc38fgnya0h6zvqiopwknrssdh3jsups2jlepztwj7g58azowdd2cnm08';
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const amount = body?.amount;
 
     if (!amount) {
-      return res.status(400).json({ error: 'Amount is required', receivedBody: body });
+      return res.status(400).json({ error: 'Amount is required' });
     }
 
-    // 1. Get OAuth Token
-    const tokenBody = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      scope: 'payments:write'
-    });
-
-    const tokenRes = await fetch('https://oauth.livepix.gg/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenBody.toString()
-    });
-
-    const tokenText = await tokenRes.text();
-
-    if (!tokenRes.ok) {
-      return res.status(500).json({
-        error: 'Falha na autenticacao Livepix',
-        status: tokenRes.status,
-        response: tokenText
-      });
-    }
-
-    let tokenData;
-    try {
-      tokenData = JSON.parse(tokenText);
-    } catch (e) {
-      return res.status(500).json({ error: 'Token response nao e JSON', response: tokenText });
-    }
-
-    // 2. Create Payment
-    const origin = req.headers.origin || req.headers.referer || 'https://amber-zdv1.vercel.app';
-    const paymentRes = await fetch('https://api.livepix.gg/v2/payments', {
+    // =========================================================
+    // CHAMADA PARA A API DO OMEGAPAY
+    // Obs: Adicionei "/payments" no final da URL que você enviou, pois a maioria 
+    // das APIs exige um caminho específico. Caso a documentação deles diga 
+    // algo como "/transaction" ou "/pix", basta alterar abaixo.
+    // =========================================================
+    const paymentRes = await fetch('https://app.omegapayments.com.br/api/v1/payments', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + tokenData.access_token,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        // Autenticação Basic com base64 do clientId:clientSecret
+        'Authorization': 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
       },
       body: JSON.stringify({
         amount: amount,
-        currency: 'BRL',
-        redirectUrl: origin
+        payment_method: 'pix',
+        description: 'Assinatura Brumaccio'
       })
     });
 
@@ -68,7 +44,7 @@ module.exports = async function handler(req, res) {
 
     if (!paymentRes.ok) {
       return res.status(500).json({
-        error: 'Falha ao criar pagamento',
+        error: 'Falha ao criar pagamento no OmegaPay',
         status: paymentRes.status,
         response: paymentText
       });
@@ -84,6 +60,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(paymentData);
 
   } catch (error) {
-    return res.status(500).json({ error: 'Erro interno', message: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Erro interno', message: error.message });
   }
 };

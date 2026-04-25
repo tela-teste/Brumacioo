@@ -588,7 +588,7 @@
       if (e.target === modal) modal.style.display = 'none';
     });
 
-    // Payment Logic (calls our serverless API)
+    // Payment Logic (Gateway OmegaPay)
     async function handlePayment(amount) {
       const btn = event?.currentTarget;
       const originalContent = btn ? btn.innerHTML : '';
@@ -600,24 +600,36 @@
           btn.innerHTML = '<span>PROCESSANDO...</span><span class="spinner"></span>';
         }
 
+        // =========================================================
+        // A chamada agora é feita para o seu backend seguro
+        // onde as chaves estão protegidas
+        // =========================================================
         const response = await fetch('/api/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount })
+          body: JSON.stringify({ amount: amount })
         });
 
-        if (!response.ok) throw new Error('Erro ao criar pagamento');
-        const paymentData = await response.json();
+        if (!response.ok) {
+          throw new Error('Falha ao comunicar com o servidor');
+        }
 
-        if (paymentData.data?.redirectUrl) {
-          window.location.href = paymentData.data.redirectUrl;
+        const paymentData = await response.json();
+        
+        // Verifica se a API retornou um link de pagamento
+        // Ajuste "link_de_pagamento" ou "pix_url" conforme a documentação real do OmegaPay
+        if (paymentData.link_de_pagamento) {
+          window.location.href = paymentData.link_de_pagamento;
+        } else if (paymentData.pix_url) {
+          window.location.href = paymentData.pix_url;
         } else {
-          throw new Error('URL de redirecionamento não encontrada');
+          alert('Pagamento gerado, mas sem link de redirecionamento.');
+          console.log('Resposta da API:', paymentData);
         }
 
       } catch (error) {
         console.error(error);
-        alert('Ocorreu um erro ao processar o Pix. Por favor, tente novamente.');
+        alert('Ocorreu um erro ao processar o pagamento. Por favor, tente novamente.');
       } finally {
         if (btn) {
           btn.style.opacity = '1';
