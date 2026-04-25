@@ -1,0 +1,25 @@
+{
+  "name": "saveweb2zip-com-onlyfans-com",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tela-teste/telateste.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tela-teste/telateste.git"
+  },
+  "homepage": "https://github.com/tela-teste/telateste.git",
+  "devDependencies": {
+    "vite": "^8.0.9"
+  }
+}
